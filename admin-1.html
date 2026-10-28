@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>إدارة الطلبات</title>
+<style>
+:root{--bg:#eef0f8;--ink:#1b1f3b;--card:#fff;--accent:#5b3df5;--line:#d9ddef}
+@media (prefers-color-scheme:dark){:root{--bg:#14162b;--ink:#eceefb;--card:#1e2142;--accent:#8c78ff;--line:#32366a}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6}
+input,button{font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{background:var(--accent);color:#fff;border:0;cursor:pointer}
+.o{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<h1>إدارة الطلبات</h1>
+<input id="k" type="password" placeholder="مفتاح الإدارة"> <button id="ld">عرض الطلبات</button>
+<div id="list"></div>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const H = () => ({ 'x-admin-key': $('#k').value });
+async function load() {
+  const r = await fetch('/api/admin/orders', { headers: H() });
+  const d = await r.json();
+  if (!r.ok) { $('#list').textContent = d.error; return; }
+  $('#list').innerHTML = d.length ? d.map((o) => `<div class="o"><b>${esc(o.name)}</b> — $${o.price}<br>
+    الطلب: ${esc(o.id)} | تواصل: ${esc(o.contact)}<br>الحالة: ${esc(o.status)} ${o.error ? '<br>خطأ: ' + esc(o.error) : ''}
+    ${o.status !== 'delivered' ? `<br><button data-id="${esc(o.id)}">تم الدفع، سلّم الكود</button>` : ''}</div>`).join('') : 'لا توجد طلبات بعد.';
+}
+$('#ld').onclick = load;
+$('#list').onclick = async (e) => {
+  const id = e.target.dataset.id; if (!id) return;
+  e.target.disabled = true;
+  const r = await fetch(`/api/admin/orders/${encodeURIComponent(id)}/confirm`, { method: 'POST', headers: H() });
+  if (!r.ok) alert((await r.json()).error);
+  load();
+};
+</script>
+</body>
+</html>
